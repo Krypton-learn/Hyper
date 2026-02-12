@@ -55,39 +55,54 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
         children: [
           const Sidebar(currentRoute: '/home'),
           Expanded(
-            child: Center(
-              child: FadeTransition(
-                opacity: _fadeAnimation,
-                child: SlideTransition(
-                  position: _slideAnimation,
-                  child: Padding(
-                    padding: const EdgeInsets.all(32.0),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text(
-                          'Welcome to Hyper',
-                          style: TextStyle(
-                            fontSize: 48,
-                            fontWeight: FontWeight.bold,
-                            color: textColor,
-                          ),
+            child: Stack(
+              children: [
+                Center(
+                  child: FadeTransition(
+                    opacity: _fadeAnimation,
+                    child: SlideTransition(
+                      position: _slideAnimation,
+                      child: Padding(
+                        padding: const EdgeInsets.all(32.0),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text(
+                              'Welcome to Hyper',
+                              style: TextStyle(
+                                fontSize: 48,
+                                fontWeight: FontWeight.bold,
+                                color: textColor,
+                              ),
+                            ),
+                            const SizedBox(height: 24),
+                            Text(
+                              'This is an internal tool made for Krypton, and this tool is only meant to be used by the member of Kryptons.',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                fontSize: 18,
+                                color: subtextColor,
+                                height: 1.5,
+                              ),
+                            ),
+                          ],
                         ),
-                        const SizedBox(height: 24),
-                        Text(
-                          'This is an internal tool made for Krypton, and this tool is only meant to be used by the member of Kryptons.',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            fontSize: 18,
-                            color: subtextColor,
-                            height: 1.5,
-                          ),
-                        ),
-                      ],
+                      ),
                     ),
                   ),
                 ),
-              ),
+                Positioned(
+                  bottom: 16,
+                  right: 16,
+                  child: Text(
+                    'version:0.1.0A',
+                    style: TextStyle(
+                      color: subtextColor,
+                      fontSize: 12,
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
         ],

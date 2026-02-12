@@ -20,14 +20,15 @@ class TaskTable extends StatelessWidget {
       clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
         color: cardColor,
-        borderRadius: BorderRadius.circular(16), // Increased from 8 to 16
+        borderRadius: BorderRadius.circular(24), // Increased to match TaskForm
         boxShadow: isDark ? [] : [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
+            blurRadius: 20,
+            offset: const Offset(0, 10),
           ),
         ],
+        border: isDark ? Border.all(color: const Color(0xFF3F3F46)) : null,
       ),
       child: Table(
         columnWidths: const {
@@ -79,23 +80,41 @@ class TaskTable extends StatelessWidget {
                 padding: const EdgeInsets.all(16.0),
                 child: Row(
                   children: [
-                    CircleAvatar(
-                      radius: 14,
-                      backgroundColor: task.assignedTo.color.withValues(alpha: 0.2),
-                      child: Text(
-                        task.assignedTo.initials,
-                        style: TextStyle(
-                          color: task.assignedTo.color,
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
-                        ),
+                    if (task.assignedTo != null) ...[
+                      CircleAvatar(
+                        radius: 14,
+                        backgroundColor: task.assignedTo!.color.withValues(alpha: 0.2),
+                        backgroundImage: task.assignedTo!.image != null 
+                            ? NetworkImage(task.assignedTo!.image!) 
+                            : null,
+                        child: task.assignedTo!.image == null 
+                            ? Text(
+                                task.assignedTo!.initials,
+                                style: TextStyle(
+                                  color: task.assignedTo!.color,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              )
+                            : null,
                       ),
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      task.assignedTo.name,
-                      style: TextStyle(color: textColor),
-                    ),
+                      const SizedBox(width: 8),
+                      Text(
+                        task.assignedTo!.name,
+                        style: TextStyle(color: textColor),
+                      ),
+                    ] else ...[
+                      CircleAvatar(
+                        radius: 14,
+                        backgroundColor: Colors.grey.withValues(alpha: 0.2),
+                        child: const Icon(Icons.person_outline, size: 16, color: Colors.grey),
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        'Unassigned',
+                        style: TextStyle(color: textColor.withValues(alpha: 0.5)),
+                      ),
+                    ],
                   ],
                 ),
               ),
