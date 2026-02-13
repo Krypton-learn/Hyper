@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'screens/login_screen.dart';
 import 'providers/theme_provider.dart';
 import 'providers/user_provider.dart';
+import 'utils/globals.dart';
 
 void main() {
   runApp(
@@ -17,6 +18,8 @@ void main() {
   );
 }
 
+
+
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
@@ -25,6 +28,7 @@ class MyApp extends StatelessWidget {
     final themeProvider = Provider.of<ThemeProvider>(context);
     
     return MaterialApp(
+      navigatorKey: navigatorKey,
       title: 'Project Tasks',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(

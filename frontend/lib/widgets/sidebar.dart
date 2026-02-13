@@ -9,6 +9,7 @@ import 'package:provider/provider.dart';
 import '../providers/user_provider.dart';
 
 import '../screens/login_screen.dart';
+import '../screens/upload_screen.dart';
 
 class Sidebar extends StatelessWidget {
   final String currentRoute;
@@ -113,6 +114,26 @@ class Sidebar extends StatelessWidget {
                   PageRouteBuilder(
                     pageBuilder: (context, animation, secondaryAnimation) =>
                         const DocumentsScreen(),
+                    transitionDuration: Duration.zero,
+                  ),
+                );
+              }
+            },
+          ),
+          const SizedBox(height: 24),
+          _buildNavItem(
+            context,
+            Icons.cloud_upload_outlined,
+            false,
+            iconColorActive: iconColorActive,
+            activeBgColor: activeBgColor,
+            onTap: () {
+              if (currentRoute != '/upload') {
+                Navigator.pushReplacement(
+                  context,
+                  PageRouteBuilder(
+                    pageBuilder: (context, animation, secondaryAnimation) =>
+                        const UploadScreen(),
                     transitionDuration: Duration.zero,
                   ),
                 );

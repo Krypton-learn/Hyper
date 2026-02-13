@@ -5,6 +5,8 @@ import '../widgets/sidebar.dart';
 import '../widgets/skeleton.dart';
 import 'package:provider/provider.dart';
 import '../providers/user_provider.dart';
+import '../services/toast_service.dart';
+import '../widgets/custom_toast.dart';
 
 class UsersScreen extends StatefulWidget {
   const UsersScreen({super.key});
@@ -48,12 +50,7 @@ class _UsersScreenState extends State<UsersScreen> {
           _isLoading = false;
         });
         if (mounted) {
-           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Failed to refresh: $errorMessage'),
-              backgroundColor: Colors.red[400],
-            ),
-          );
+           ToastService.show(context, 'Failed to refresh: $errorMessage', ToastType.error);
         }
       } else {
         // Only show full screen error if we have no data
@@ -335,20 +332,13 @@ class _UsersScreenState extends State<UsersScreen> {
                     Navigator.of(context).pop();
                     await _fetchUsers(); // Refresh list and wait for it
                     if (mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('User role updated successfully'),
-                          backgroundColor: Colors.green,
-                        ),
-                      );
+                      ToastService.show(context, 'User role updated successfully', ToastType.success);
                     }
                   }
                 }
               } catch (e) {
                 if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text(e.toString().replaceAll('Exception: ', ''))),
-                  );
+                  ToastService.show(context, e.toString().replaceAll('Exception: ', ''), ToastType.error);
                 }
               }
             },

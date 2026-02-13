@@ -1,7 +1,22 @@
 import 'package:flutter/material.dart';
 
 enum TaskPriority { high, critical, low, medium }
-enum TaskStatus { inProgress, toDo, done }
+enum TaskStatus { 
+  inProgress, 
+  toDo, 
+  done;
+
+  String get toApiString {
+    switch (this) {
+      case TaskStatus.inProgress:
+        return 'inprogress';
+      case TaskStatus.toDo:
+        return 'todo';
+      case TaskStatus.done:
+        return 'done';
+    }
+  }
+}
 
 class AssignedUser {
   final String name;
@@ -52,6 +67,9 @@ class Task {
   final TaskPriority priority;
   final TaskStatus status;
   final AssignedUser? assignedTo;
+  final String? assignedUserId;
+  final DateTime? addedAt;
+  final DateTime? completedAt;
 
   Task({
     required this.id,
@@ -60,19 +78,26 @@ class Task {
     required this.priority,
     required this.status,
     this.assignedTo,
+    this.assignedUserId,
+    this.addedAt,
+    this.completedAt,
   });
 
   factory Task.fromJson(Map<String, dynamic> json) {
     return Task(
-      // API doesn't return ID yet, so we use a hash or random string for now, or fallback to name
-      id: json['id']?.toString() ?? DateTime.now().millisecondsSinceEpoch.toString(), 
+      id: json['task_id']?.toString() ?? json['id']?.toString() ?? DateTime.now().millisecondsSinceEpoch.toString(), 
       name: json['task_name'] ?? json['name'] ?? 'Untitled Task',
       description: json['task_description'] ?? json['description'] ?? '',
       priority: _parsePriority(json['task_priority'] ?? json['priority']),
-      status: _parseStatus(json['task_status'] ?? json['status']),
+      status: _parseStatus(json['task_status'] ?? json['status'], json['task_completed']),
       assignedTo: json['task_assigned_to'] != null 
           ? AssignedUser.fromJson(json['task_assigned_to']) 
           : (json['assigned_to'] != null ? AssignedUser.fromJson(json['assigned_to']) : null),
+      assignedUserId: json['task_assigned_user_id']?.toString(),
+      addedAt: json['task_added_at'] != null 
+          ? DateTime.tryParse(json['task_added_at']) 
+          : (json['task_added'] != null ? DateTime.tryParse(json['task_added']) : null),
+      completedAt: json['task_completed'] != null ? DateTime.tryParse(json['task_completed']) : null,
     );
   }
 
@@ -81,8 +106,10 @@ class Task {
       'task_name': name,
       'task_description': description,
       'task_priority': priority.toString().split('.').last,
-      'task_status': status.toString().split('.').last,
+      'task_status': status.toApiString,
       'task_assigned_to': assignedTo?.toJson(),
+      'task_added_at': addedAt?.toIso8601String(),
+      'task_completed': completedAt?.toIso8601String(),
     };
   }
 
@@ -95,7 +122,10 @@ class Task {
     return TaskPriority.medium;
   }
 
-  static TaskStatus _parseStatus(String? status) {
+  static TaskStatus _parseStatus(String? status, dynamic completedAt) {
+    if (completedAt == null) {
+        return TaskStatus.inProgress;
+    }
     switch (status?.toLowerCase()) {
       case 'inprogress':
         return TaskStatus.inProgress;
@@ -104,8 +134,11 @@ class Task {
       case 'done':
         return TaskStatus.done;
       default:
-        // Handle weird placeholder statuses by defaulting to toDo or verify if they map to something else
-        return TaskStatus.toDo;
+        // If completedAt is not null but status is unknown/missing, we might assume done or toDo?
+        // But the requirement says "if it is null show in progress".
+        // If it is NOT null, it implies it's completed or has a specific status. 
+        // Let's fallback to the status if present, otherwise if completedAt is set, it's likely done.
+        return TaskStatus.done; 
     }
   }
 }

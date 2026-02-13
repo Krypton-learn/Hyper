@@ -43,7 +43,7 @@ class _AddTaskDialogState extends State<AddTaskDialog> {
           name: _nameController.text,
           description: _descriptionController.text,
           priority: _priority.toString().split('.').last,
-          status: _status.toString().split('.').last,
+          status: _status.toApiString,
         );
 
         if (mounted) {
@@ -64,6 +64,9 @@ class _AddTaskDialogState extends State<AddTaskDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final cardColor = isDark ? const Color(0xFF27272A) : Colors.white;
+
     return AlertDialog(
       title: const Text('Add New Task'),
       content: SingleChildScrollView(
@@ -117,6 +120,8 @@ class _AddTaskDialogState extends State<AddTaskDialog> {
                   labelText: 'Priority',
                   border: OutlineInputBorder(),
                 ),
+                dropdownColor: cardColor,
+                borderRadius: BorderRadius.circular(16),
                 items: TaskPriority.values.map((priority) {
                   return DropdownMenuItem(
                     value: priority,
@@ -138,7 +143,11 @@ class _AddTaskDialogState extends State<AddTaskDialog> {
                   labelText: 'Status',
                   border: OutlineInputBorder(),
                 ),
-                items: TaskStatus.values.map((status) {
+                dropdownColor: cardColor,
+                borderRadius: BorderRadius.circular(16),
+                items: TaskStatus.values
+                    .where((status) => status != TaskStatus.done)
+                    .map((status) {
                   return DropdownMenuItem(
                     value: status,
                     child: Text(status.toString().split('.').last.toUpperCase()),

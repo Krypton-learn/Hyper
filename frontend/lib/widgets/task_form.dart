@@ -4,6 +4,8 @@ import '../models/task.dart';
 import '../models/user.dart';
 import '../services/api_service.dart';
 import '../providers/user_provider.dart';
+import '../services/toast_service.dart';
+import '../widgets/custom_toast.dart';
 
 class TaskForm extends StatefulWidget {
   final VoidCallback onTaskCreated;
@@ -50,7 +52,8 @@ class _TaskFormState extends State<TaskForm> {
         final membersData = await apiService.getTeamMembers();
         if (mounted) {
           setState(() {
-            _teamMembers = membersData.map((e) => User.fromMap(e)).toList();
+            final allMembers = membersData.map((e) => User.fromMap(e)).toList();
+            _teamMembers = allMembers.where((user) => user.id != userProvider.currentUser?.id).toList();
             _isLoadingMembers = false;
           });
         }
@@ -80,7 +83,7 @@ class _TaskFormState extends State<TaskForm> {
           name: _nameController.text,
           description: _descriptionController.text,
           priority: _priority.toString().split('.').last,
-          status: _status.toString().split('.').last,
+          status: _status.toApiString,
           assignedToUserId: _assignedToUserId,
         );
 
@@ -93,9 +96,7 @@ class _TaskFormState extends State<TaskForm> {
             _assignedToUserId = null;
             _isLoading = false;
           });
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Task created successfully')),
-          );
+          ToastService.show(context, 'Task created successfully', ToastType.success);
           widget.onTaskCreated();
         }
       } catch (e) {
@@ -241,6 +242,7 @@ class _TaskFormState extends State<TaskForm> {
                     value: _priority,
                     style: TextStyle(color: textColor),
                     dropdownColor: cardColor,
+                    borderRadius: BorderRadius.circular(16),
                     decoration: buildDecoration('Priority'),
                     items: TaskPriority.values.map((priority) {
                       return DropdownMenuItem(
@@ -274,8 +276,11 @@ class _TaskFormState extends State<TaskForm> {
                     value: _status,
                     style: TextStyle(color: textColor),
                     dropdownColor: cardColor,
+                    borderRadius: BorderRadius.circular(16),
                     decoration: buildDecoration('Status'),
-                    items: TaskStatus.values.map((status) {
+                    items: TaskStatus.values
+                        .where((status) => status != TaskStatus.done)
+                        .map((status) {
                       return DropdownMenuItem(
                         value: status,
                         child: Text(status.toString().split('.').last.toUpperCase(), style: const TextStyle(fontWeight: FontWeight.w600)),
@@ -297,6 +302,7 @@ class _TaskFormState extends State<TaskForm> {
               value: _assignedToUserId,
               style: TextStyle(color: textColor),
               dropdownColor: cardColor,
+              borderRadius: BorderRadius.circular(16),
               decoration: buildDecoration('Assign To'),
               items: _teamMembers.map((user) {
                 return DropdownMenuItem(

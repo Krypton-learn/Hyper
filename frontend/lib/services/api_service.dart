@@ -3,6 +3,9 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart';
+import '../utils/session_manager.dart';
+import 'toast_service.dart';
+import '../widgets/custom_toast.dart';
 
 class ApiService {
   static const String baseUrl = 'http://127.0.0.1:8000/api/v1';
@@ -66,6 +69,7 @@ class ApiService {
       } else if (response.statusCode == 400) {
         throw Exception('Email is already registered!');
       } else if (response.statusCode == 429) {
+        ToastService.showGlobal("daam looks like you have hit the api limit try again after 1min", ToastType.error);
         throw Exception('Too many requests. Try again after 1 min');
       } else {
         // Attempt to parse error message from body, fallback to status code
@@ -117,6 +121,9 @@ class ApiService {
 
       if (response.statusCode == 200) {
         return jsonDecode(response.body);
+      } else if (response.statusCode == 429) {
+        ToastService.showGlobal("daam looks like you have hit the api limit try again after 1min", ToastType.error);
+        throw Exception('Too many requests. Try again after 1 min');
       } else {
         // Attempt to parse error message from body, fallback to status code
         try {
@@ -152,10 +159,17 @@ class ApiService {
 
       if (response.statusCode == 200) {
         return jsonDecode(response.body);
+      } else if (response.statusCode == 429) {
+        ToastService.showGlobal("daam looks like you have hit the api limit try again after 1min", ToastType.error);
+        throw Exception('Too many requests. Try again after 1 min');
+      } else if (response.statusCode == 401) {
+        SessionManager.handleSessionExpired();
+        throw Exception('Session expired');
       } else {
         throw Exception('Failed to load user profile: ${response.statusCode}');
       }
     } catch (e) {
+      if (e.toString().contains('Session expired')) rethrow;
       throw Exception('Failed to load user profile: $e');
     }
   }
@@ -175,10 +189,17 @@ class ApiService {
 
       if (response.statusCode == 200) {
         return jsonDecode(response.body);
+      } else if (response.statusCode == 429) {
+        ToastService.showGlobal("daam looks like you have hit the api limit try again after 1min", ToastType.error);
+        throw Exception('Too many requests. Try again after 1 min');
+      } else if (response.statusCode == 401) {
+        SessionManager.handleSessionExpired();
+        throw Exception('Session expired');
       } else {
         throw Exception('Failed to load team members: ${response.statusCode}');
       }
     } catch (e) {
+      if (e.toString().contains('Session expired')) rethrow;
       if (e is http.ClientException || e.toString().contains('SocketException')) {
            throw Exception('Network error: Please check your connection');
       }
@@ -206,6 +227,12 @@ class ApiService {
 
       if (response.statusCode == 200) {
         return; // Success
+      } else if (response.statusCode == 429) {
+        ToastService.showGlobal("daam looks like you have hit the api limit try again after 1min", ToastType.error);
+        throw Exception('Too many requests. Try again after 1 min');
+      } else if (response.statusCode == 401) {
+        SessionManager.handleSessionExpired();
+        throw Exception('Session expired');
       } else if (response.statusCode == 304) {
         throw Exception('User does not exist!');
       } else {
@@ -258,6 +285,12 @@ class ApiService {
 
       if (response.statusCode == 201 || response.statusCode == 200) {
         return; // Success
+      } else if (response.statusCode == 429) {
+        ToastService.showGlobal("daam looks like you have hit the api limit try again after 1min", ToastType.error);
+        throw Exception('Too many requests. Try again after 1 min');
+      } else if (response.statusCode == 401) {
+        SessionManager.handleSessionExpired();
+        throw Exception('Session expired');
       } else {
         // Attempt to parse error message
         try {
@@ -290,8 +323,101 @@ class ApiService {
 
       if (response.statusCode == 200) {
         return List<Map<String, dynamic>>.from(jsonDecode(response.body));
+      } else if (response.statusCode == 429) {
+        ToastService.showGlobal("daam looks like you have hit the api limit try again after 1min", ToastType.error);
+        throw Exception('Too many requests. Try again after 1 min');
+      } else if (response.statusCode == 401) {
+        SessionManager.handleSessionExpired();
+        throw Exception('Session expired');
       } else {
         throw Exception('Failed to load tasks: ${response.statusCode}');
+      }
+    } catch (e) {
+      if (e is http.ClientException || e.toString().contains('SocketException')) {
+        throw Exception('Network error: Please check your connection');
+      }
+      throw Exception(e.toString().replaceAll('Exception: ', ''));
+    }
+  }
+
+  Future<void> updateTaskStatus(String taskId, String status) async {
+    if (token == null) throw Exception('Authentication required');
+    final url = Uri.parse('$baseUrl/update/task/status/');
+
+    try {
+      final response = await http.put(
+        url,
+        headers: {
+          'Content-Type': 'application/json',
+          'accept': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+        body: jsonEncode({
+          'task_id': taskId,
+          'task_status': status,
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        return; // Success
+      } else if (response.statusCode == 429) {
+        ToastService.showGlobal("daam looks like you have hit the api limit try again after 1min", ToastType.error);
+        throw Exception('Too many requests. Try again after 1 min');
+      } else if (response.statusCode == 401) {
+        SessionManager.handleSessionExpired();
+        throw Exception('Session expired');
+      } else {
+        try {
+          final errorBody = jsonDecode(response.body);
+          throw Exception(errorBody['detail'] ?? 'Failed to update task status: ${response.statusCode}');
+        } catch (e) {
+          throw Exception('Failed to update task status: ${response.statusCode}');
+        }
+      }
+    } catch (e) {
+      if (e is http.ClientException || e.toString().contains('SocketException')) {
+        throw Exception('Network error: Please check your connection');
+      }
+      throw Exception(e.toString().replaceAll('Exception: ', ''));
+    }
+  }
+  Future<void> uploadMedia(File file, String name, String type) async {
+    if (token == null) throw Exception('Authentication required');
+    final url = Uri.parse('$baseUrl/upload/media/');
+
+    try {
+      var request = http.MultipartRequest('POST', url);
+      request.headers['Authorization'] = 'Bearer $token';
+      request.fields['media_name'] = name;
+      request.fields['media_type'] = type; // 'image' or 'file'
+
+      final mediaType = _getMediaType(file.path);
+      request.files.add(
+        await http.MultipartFile.fromPath(
+          'file',
+          file.path,
+          contentType: mediaType,
+        ),
+      );
+
+      final streamedResponse = await request.send();
+      final response = await http.Response.fromStream(streamedResponse);
+
+      if (response.statusCode == 201 || response.statusCode == 200) {
+        return; // Success
+      } else if (response.statusCode == 429) {
+        ToastService.showGlobal("daam looks like you have hit the api limit try again after 1min", ToastType.error);
+        throw Exception('Too many requests. Try again after 1 min');
+      } else if (response.statusCode == 401) {
+        SessionManager.handleSessionExpired();
+        throw Exception('Session expired');
+      } else {
+         try {
+          final errorBody = jsonDecode(response.body);
+          throw Exception(errorBody['detail'] ?? 'Failed to upload media: ${response.statusCode}');
+        } catch (e) {
+          throw Exception('Failed to upload media: ${response.statusCode}');
+        }
       }
     } catch (e) {
       if (e is http.ClientException || e.toString().contains('SocketException')) {
