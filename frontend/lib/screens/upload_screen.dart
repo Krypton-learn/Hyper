@@ -6,6 +6,8 @@ import 'package:provider/provider.dart';
 import '../widgets/sidebar.dart';
 import '../services/api_service.dart';
 import '../providers/user_provider.dart';
+import '../services/toast_service.dart';
+import '../widgets/custom_toast.dart';
 
 class UploadScreen extends StatefulWidget {
   const UploadScreen({super.key});
@@ -24,6 +26,7 @@ class _UploadScreenState extends State<UploadScreen> {
 
   final List<String> _fileTypes = ['Auto', 'Image', 'PDF'];
 
+
   @override
   void dispose() {
     _nameController.dispose();
@@ -37,8 +40,11 @@ class _UploadScreenState extends State<UploadScreen> {
     );
 
     if (result != null && result.files.single.path != null) {
+      final file = File(result.files.single.path!);
+      if (!_validateFileSize(file)) return;
+
       setState(() {
-        _selectedFile = File(result.files.single.path!);
+        _selectedFile = file;
         _fileName = result.files.single.name;
         // Auto-fill name if empty
         if (_nameController.text.isEmpty) {
@@ -51,8 +57,11 @@ class _UploadScreenState extends State<UploadScreen> {
 
   void _onDragDone(DropDoneDetails details) {
     if (details.files.isNotEmpty) {
+      final file = File(details.files.first.path);
+      if (!_validateFileSize(file)) return;
+
       setState(() {
-        _selectedFile = File(details.files.first.path);
+        _selectedFile = file;
         _fileName = details.files.first.name;
          if (_nameController.text.isEmpty) {
           _nameController.text = _fileName!.split('.').first;
@@ -60,6 +69,20 @@ class _UploadScreenState extends State<UploadScreen> {
         _updateFileTypeFromExtension(_selectedFile!.path);
       });
     }
+  }
+
+  bool _validateFileSize(File file) {
+    final result = FileSizeValidator.validate(file);
+    if (!result.isValid) {
+      _showError(result.errorMessage!);
+      return false;
+    }
+    return true;
+  }
+
+  void _showError(String message) {
+    if (!mounted) return;
+    ToastService.show(context, message, ToastType.error);
   }
 
   void _updateFileTypeFromExtension(String path) {
@@ -73,16 +96,12 @@ class _UploadScreenState extends State<UploadScreen> {
 
   Future<void> _uploadFile() async {
     if (_selectedFile == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please select a file first.')),
-      );
+      ToastService.show(context, 'Please select a file first.', ToastType.error);
       return;
     }
 
     if (_nameController.text.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please enter a media name.')),
-      );
+      ToastService.show(context, 'Please enter a media name.', ToastType.error);
       return;
     }
 
@@ -112,9 +131,7 @@ class _UploadScreenState extends State<UploadScreen> {
       await apiService.uploadMedia(_selectedFile!, _nameController.text, mediaType);
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Upload successful!')),
-        );
+        ToastService.show(context, 'Upload successful!', ToastType.success);
         setState(() {
           _selectedFile = null;
           _fileName = null;
@@ -124,9 +141,7 @@ class _UploadScreenState extends State<UploadScreen> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Upload failed: $e')),
-        );
+        ToastService.show(context, 'Upload failed: $e', ToastType.error);
       }
     } finally {
       if (mounted) {
@@ -437,4 +452,32 @@ class _UploadScreenState extends State<UploadScreen> {
       ),
     );
   }
+}
+
+class FileSizeValidator {
+  static const int _maxImageSize = 1 * 1024 * 1024; // 1 MB
+  static const int _maxPdfSize = 10 * 1024 * 1024; // 10 MB
+
+  static ValidationResult validate(File file) {
+    final size = file.lengthSync();
+    final ext = file.path.split('.').last.toLowerCase();
+    
+    if (['jpg', 'jpeg', 'png', 'gif', 'webp'].contains(ext)) {
+      if (size > _maxImageSize) {
+        return ValidationResult(false, 'Image size exceeds 1MB limit.');
+      }
+    } else if (ext == 'pdf') {
+      if (size > _maxPdfSize) {
+        return ValidationResult(false, 'PDF size exceeds 10MB limit.');
+      }
+    }
+    return ValidationResult(true, null);
+  }
+}
+
+class ValidationResult {
+  final bool isValid;
+  final String? errorMessage;
+
+  ValidationResult(this.isValid, this.errorMessage);
 }

@@ -10,8 +10,9 @@ import '../widgets/custom_toast.dart';
 class ApiService {
   static const String baseUrl = 'http://127.0.0.1:8000/api/v1';
   final String? token;
+  final http.Client client;
 
-  ApiService([this.token]);
+  ApiService([this.token, http.Client? client]) : client = client ?? http.Client();
 
   /// Get the MediaType based on file extension
   MediaType? _getMediaType(String filePath) {
@@ -26,8 +27,10 @@ class ApiService {
         return MediaType('image', 'gif');
       case 'webp':
         return MediaType('image', 'webp');
+      case 'pdf':
+        return MediaType('application', 'pdf');
       default:
-        return MediaType('image', 'jpeg'); // Default to jpeg
+        return MediaType('application', 'octet-stream'); // Default to binary data
     }
   }
 
@@ -59,7 +62,7 @@ class ApiService {
         );
       }
 
-      final streamedResponse = await request.send();
+      final streamedResponse = await client.send(request);
       final response = await http.Response.fromStream(streamedResponse);
 
       if (response.statusCode == 200 || response.statusCode == 201) {
@@ -106,7 +109,7 @@ class ApiService {
     final url = Uri.parse('$baseUrl/user/login/');
     
     try {
-      final response = await http.post(
+      final response = await client.post(
         url,
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded',
@@ -149,7 +152,7 @@ class ApiService {
     final url = Uri.parse('$baseUrl/users/me/');
     
     try {
-      final response = await http.get(
+      final response = await client.get(
         url,
         headers: {
           'Authorization': 'Bearer $accessToken',
@@ -179,7 +182,7 @@ class ApiService {
     final url = Uri.parse('$baseUrl/team_members/');
     
     try {
-      final response = await http.get(
+      final response = await client.get(
         url,
         headers: {
           'accept': 'application/json',
@@ -212,7 +215,7 @@ class ApiService {
     final url = Uri.parse('$baseUrl/update/user/role/');
     
     try {
-      final response = await http.put(
+      final response = await client.put(
         url,
         headers: {
           'Content-Type': 'application/json',
@@ -273,7 +276,7 @@ class ApiService {
         if (assignedToUserId != null) 'task_assigned_user_id': assignedToUserId,
       };
 
-      final response = await http.post(
+      final response = await client.post(
         url,
         headers: {
           'Content-Type': 'application/json',
@@ -313,7 +316,7 @@ class ApiService {
     final url = Uri.parse('$baseUrl/get/tasks/');
 
     try {
-      final response = await http.get(
+      final response = await client.get(
         url,
         headers: {
           'accept': 'application/json',
@@ -345,7 +348,7 @@ class ApiService {
     final url = Uri.parse('$baseUrl/update/task/status/');
 
     try {
-      final response = await http.put(
+      final response = await client.put(
         url,
         headers: {
           'Content-Type': 'application/json',
@@ -400,7 +403,7 @@ class ApiService {
         ),
       );
 
-      final streamedResponse = await request.send();
+      final streamedResponse = await client.send(request);
       final response = await http.Response.fromStream(streamedResponse);
 
       if (response.statusCode == 201 || response.statusCode == 200) {
@@ -418,6 +421,38 @@ class ApiService {
         } catch (e) {
           throw Exception('Failed to upload media: ${response.statusCode}');
         }
+      }
+    } catch (e) {
+      if (e is http.ClientException || e.toString().contains('SocketException')) {
+        throw Exception('Network error: Please check your connection');
+      }
+      throw Exception(e.toString().replaceAll('Exception: ', ''));
+    }
+  }
+
+  Future<List<String>> getMedia() async {
+    if (token == null) throw Exception('Authentication required');
+    final url = Uri.parse('$baseUrl/get/media/');
+
+    try {
+      final response = await client.get(
+        url,
+        headers: {
+          'accept': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        return List<String>.from(jsonDecode(response.body));
+      } else if (response.statusCode == 429) {
+        ToastService.showGlobal("daam looks like you have hit the api limit try again after 1min", ToastType.error);
+        throw Exception('Too many requests. Try again after 1 min');
+      } else if (response.statusCode == 401) {
+        SessionManager.handleSessionExpired();
+        throw Exception('Session expired');
+      } else {
+        throw Exception('Failed to load media: ${response.statusCode}');
       }
     } catch (e) {
       if (e is http.ClientException || e.toString().contains('SocketException')) {
